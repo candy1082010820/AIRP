@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#192a35">
+    <title>AIRP｜角色扮演資料庫</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <aside class="sidebar" aria-label="主要導覽">
+      <a class="brand" href="/" aria-label="AIRP 首頁"><span class="brand-mark" aria-hidden="true">A<span>✦</span></span><span>AIRP<small>故事的長期記憶</small></span></a>
+      <div class="nav-label">你的創作空間</div>
+      <nav id="kind-nav" aria-label="資料分類">
+        <button class="nav-item active" data-kind="" aria-pressed="true"><span aria-hidden="true">◈</span>所有資料<span class="nav-count" id="total-count">—</span></button>
+        <button class="nav-item" data-kind="world" aria-pressed="false"><span aria-hidden="true">◎</span>世界設定</button>
+        <button class="nav-item" data-kind="character" aria-pressed="false"><span aria-hidden="true">♙</span>角色檔案</button>
+        <button class="nav-item" data-kind="lore" aria-pressed="false"><span aria-hidden="true">▤</span>背景知識</button>
+        <button class="nav-item" data-kind="scenario" aria-pressed="false"><span aria-hidden="true">◇</span>情境劇本</button>
+        <button class="nav-item" data-kind="rule" aria-pressed="false"><span aria-hidden="true">☷</span>扮演規則</button>
+      </nav>
+      <div class="sidebar-note"><span class="note-star" aria-hidden="true">✦</span><strong>每個故事，都值得被記住。</strong><p>更新一次設定，讓 GPT 下次呼叫 Actions 時讀到最新版本。</p></div>
+      <div class="sidebar-footer"><span class="connection-dot" id="connection-dot"></span><span id="connection-status">正在連線</span><button id="auth-button" class="plain-button" aria-label="設定管理金鑰">金鑰設定</button></div>
+    </aside>
+
+    <main>
+      <header class="topbar"><span class="breadcrumb">創作空間 <span aria-hidden="true">/</span> <strong>資料庫</strong></span><div class="topbar-actions"><a href="/docs" target="_blank" rel="noopener">API 文件 <span aria-hidden="true">↗</span></a><button id="context-button" class="button button-quiet"><span aria-hidden="true">✧</span> GPT 讀取預覽</button></div></header>
+      <section class="workspace">
+        <section class="intro" aria-labelledby="page-title"><div><div class="eyebrow">YOUR STORIES, ALWAYS IN SYNC</div><h1 id="page-title">讓故事保持鮮活<span class="title-star" aria-hidden="true">✦</span></h1><p>收好世界觀、角色與故事細節，讓每一次角色扮演都有跡可循。</p></div><button id="new-button" class="button button-primary"><span aria-hidden="true">＋</span>新增資料</button></section>
+
+        <section class="connection-card" aria-labelledby="gpt-title"><div class="connection-icon" aria-hidden="true">↗</div><div><h2 id="gpt-title">把你的故事，接進 GPT</h2><p>部署到公開 HTTPS 網址後，在自訂 GPT 的 Actions 匯入 OpenAPI，即可讀取已發佈的最新資料。</p></div><a href="/gpt/openapi.json" target="_blank" rel="noopener" class="button button-outline">查看 Actions schema <span aria-hidden="true">↗</span></a></section>
+
+        <section class="library" aria-labelledby="library-heading">
+          <div class="library-heading"><div><h2 id="library-heading">所有資料</h2><span id="results-count" class="muted">正在讀取…</span></div><div class="library-tools"><button id="import-button" class="plain-button">↓ 匯入</button><button id="export-button" class="plain-button">↑ 匯出</button><input type="file" id="import-file" accept=".json,application/json" hidden aria-label="選擇 JSON 備份檔"></div></div>
+          <div class="filterbar"><div class="search-wrap"><span aria-hidden="true">⌕</span><label class="sr-only" for="search">搜尋資料</label><input id="search" type="search" placeholder="搜尋標題、內容或標籤…" autocomplete="off"></div><div class="filter-select"><label class="sr-only" for="world-filter">篩選世界</label><select id="world-filter"><option value="">所有世界</option></select></div><div class="filter-select status-filter"><label class="sr-only" for="status-filter">篩選發佈狀態</label><select id="status-filter"><option value="">所有狀態</option><option value="published">已發佈</option><option value="draft">草稿</option></select></div></div>
+          <div id="error-banner" class="error-banner" role="alert" hidden><span id="error-text"></span><button id="retry-button" class="plain-button">重新讀取</button></div>
+          <div id="loading" class="loading" role="status"><span class="spinner" aria-hidden="true"></span>正在整理你的故事…</div>
+          <div id="entry-grid" class="entry-grid"></div>
+          <div id="empty-state" class="empty-state" hidden><div class="empty-art" aria-hidden="true">▤<span>✦</span></div><h3 id="empty-title">第一個故事，從這裡開始</h3><p id="empty-description">先建立世界設定，再加入角色、背景與規則。<br>儲存為「已發佈」後，GPT 就能讀取。</p><button id="empty-new-button" class="button button-primary">＋ 新增第一筆資料</button></div>
+          <div class="pagination" id="pagination" hidden><span id="page-info"></span><div><button id="previous-page" class="button button-quiet">← 上一頁</button><button id="next-page" class="button button-quiet">下一頁 →</button></div></div>
+        </section>
+        <footer class="workspace-footer"><span>你的設定是故事的底稿，想改就改。</span><span>草稿僅供管理；已發佈資料可由 GPT 讀取。</span></footer>
+      </section>
+    </main>
+
+    <dialog id="editor-dialog" class="dialog editor-dialog" aria-labelledby="editor-title">
+      <form id="editor-form">
+        <header class="dialog-header"><div><div class="eyebrow">STORY ARCHIVE</div><h2 id="editor-title">新增資料</h2></div><button type="button" class="icon-button" data-close="editor-dialog" aria-label="關閉編輯視窗">×</button></header>
+        <div class="dialog-body">
+          <div class="field-row"><div class="field"><label for="entry-kind">資料類型</label><select id="entry-kind" name="kind"><option value="world">世界設定</option><option value="character">角色檔案</option><option value="lore">背景知識</option><option value="scenario">情境劇本</option><option value="rule">扮演規則</option></select></div><div class="field"><label for="entry-world">所屬世界</label><select id="entry-world" name="world_id"><option value="">未指定世界</option></select></div></div>
+          <div class="field"><label for="entry-title">標題 <span class="required">必填</span></label><input id="entry-title" name="title" maxlength="200" required placeholder="例如：霧港、艾琳・夜行者"></div>
+          <div class="field"><label for="entry-summary">摘要</label><textarea id="entry-summary" name="summary" rows="2" maxlength="2000" placeholder="用一兩句話描述這筆資料，方便快速辨識。"></textarea></div>
+          <div class="field"><label for="entry-content">完整設定 <span class="required">必填</span></label><textarea id="entry-content" name="content" rows="9" maxlength="50000" required placeholder="寫下 GPT 需要知道的設定。可使用 Markdown，例如：&#10;&#10;## 個性&#10;## 背景&#10;## 說話方式"></textarea><span class="field-help">可使用 Markdown。內容會在 GPT 每次呼叫 Actions 時即時讀取。</span></div>
+          <div class="field"><label for="entry-tags">標籤</label><input id="entry-tags" name="tags" placeholder="奇幻、冒險、主角"><span class="field-help">使用逗號分隔，例如「奇幻、冒險」。</span></div>
+          <fieldset class="publish-field"><legend>發佈狀態</legend><label><input type="radio" name="status" value="draft" checked><span><strong>草稿</strong><small>整理中，GPT 暫時不會讀取</small></span></label><label><input type="radio" name="status" value="published"><span><strong>已發佈</strong><small>儲存後即可由 GPT 讀取</small></span></label></fieldset>
+          <div id="editor-error" class="inline-error" role="alert" hidden></div><div id="entry-meta" class="entry-meta" hidden></div>
+        </div>
+        <footer class="dialog-footer"><div class="editor-secondary"><button id="delete-button" type="button" class="plain-button danger" hidden>刪除</button><button id="history-button" type="button" class="plain-button" hidden>版本紀錄</button></div><div><button type="button" class="button button-quiet" data-close="editor-dialog">取消</button><button id="save-button" type="submit" class="button button-primary">儲存資料</button></div></footer>
+      </form>
+    </dialog>
+
+    <dialog id="auth-dialog" class="dialog small-dialog" aria-labelledby="auth-title"><form id="auth-form"><header class="dialog-header"><h2 id="auth-title">管理金鑰</h2><button type="button" class="icon-button" data-close="auth-dialog" aria-label="關閉金鑰設定">×</button></header><div class="dialog-body"><p class="dialog-description">若伺服器設定了管理金鑰，請填入金鑰以編輯資料。未設定金鑰的本機開發環境可直接使用。</p><div class="field"><label for="admin-key">Admin API key</label><input type="password" id="admin-key" autocomplete="off" spellcheck="false" placeholder="填入管理金鑰或留空"><span class="field-help">僅儲存在目前分頁的 sessionStorage，不會放入備份檔。</span></div></div><footer class="dialog-footer"><button type="button" class="button button-quiet" data-close="auth-dialog">取消</button><button type="submit" class="button button-primary">套用</button></footer></form></dialog>
+
+    <dialog id="history-dialog" class="dialog" aria-labelledby="history-title"><header class="dialog-header"><div><div class="eyebrow">VERSION HISTORY</div><h2 id="history-title">版本紀錄</h2></div><button type="button" class="icon-button" data-close="history-dialog" aria-label="關閉版本紀錄">×</button></header><div class="dialog-body"><p class="dialog-description">還原會建立一個新版本，保留既有紀錄。</p><div id="history-error" class="inline-error" role="alert" hidden></div><div id="history-list"></div></div></dialog>
+
+    <dialog id="context-dialog" class="dialog context-dialog" aria-labelledby="context-title"><form id="context-form"><header class="dialog-header"><div><div class="eyebrow">GPT CONTEXT</div><h2 id="context-title">GPT 讀取預覽</h2></div><button type="button" class="icon-button" data-close="context-dialog" aria-label="關閉 GPT 預覽">×</button></header><div class="dialog-body"><p class="dialog-description">預覽 GPT 能取得的已發佈資料。草稿不會出現在結果中。</p><div class="field-row"><div class="field"><label for="context-world">選擇世界</label><select id="context-world"><option value="">所有世界</option></select></div><div class="field"><label for="context-search">關鍵字（選填）</label><input id="context-search" type="search" placeholder="角色、地點或故事主題"></div></div><div id="context-error" class="inline-error" role="alert" hidden></div><div class="context-output-header"><span id="context-count">每次最多讀取 30 筆資料</span><button id="copy-context" class="plain-button" type="button" disabled>複製內容</button></div><pre id="context-output" class="context-output">按「產生預覽」，看看 GPT 將讀到哪些故事設定。</pre></div><footer class="dialog-footer"><button type="button" class="button button-quiet" data-close="context-dialog">關閉</button><button id="generate-context" type="submit" class="button button-primary">產生預覽</button></footer></form></dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>
