@@ -162,6 +162,22 @@ def test_consent_preserves_browser_form_origin_and_authorizes_retry(client):
     assert exchange(client, app, code).status_code == 200
 
 
+def test_consent_csp_allows_only_the_registered_callback_origin(client):
+    app = register(client)
+    form, page = begin(client, app)
+    directives = page.headers["content-security-policy"].split(";")
+    action = next(value.strip() for value in directives if value.strip().startswith("form-action"))
+    assert action == "form-action 'self' https://chatgpt.com"
+    assert "default-src 'none'" in directives
+    assert "*" not in action
+    approved = consent(client, form)
+    assert approved.status_code == 302
+    assert urlsplit(approved.headers["location"]).hostname == "chatgpt.com"
+    assert "read-test-key" not in approved.headers["location"]
+    for uri in ["https://*/callback", "https://chatgpt.com;script-src/callback"]:
+        assert client.post("/register", json={"redirect_uris": [uri]}).status_code == 400
+
+
 def test_bad_pkce_bad_redirect_and_replayed_codes_are_rejected(client):
     app = register(client)
     code = grant(client, app)

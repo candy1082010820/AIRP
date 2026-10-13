@@ -6,7 +6,9 @@ This provider stores hashed tokens and encrypted client metadata in SQLite.
 import base64
 import hashlib
 import html
+import ipaddress
 import json
+import re
 import secrets
 import time
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -87,6 +89,11 @@ class ReadOnlyOAuthProvider:
             loopback = url.scheme == "http" and url.hostname in {"localhost", "127.0.0.1", "::1"}
             if (url.scheme != "https" and not loopback) or not url.hostname or url.username or url.password or url.fragment:
                 raise RegistrationError("invalid_redirect_uri", "Redirects require HTTPS, or HTTP loopback for native clients")
+            try:
+                ipaddress.ip_address(url.hostname)
+            except ValueError:
+                if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?", url.hostname.rstrip(".")):
+                    raise RegistrationError("invalid_redirect_uri", "Redirect host must be an exact DNS hostname or IP address")
         encrypted = self.cipher.encrypt(client_info.model_dump_json().encode()).decode()
         with self.store.connect(write=True) as conn:
             self.cleanup(conn)
@@ -132,7 +139,9 @@ class ReadOnlyOAuthProvider:
     def render_consent(self, flow_id, csrf, client, params, error="", status_code=200):
         escape = html.escape
         name = escape(client.client_name or "MCP 應用程式")
-        target = escape(urlsplit(str(params.redirect_uri)).netloc)
+        callback = urlsplit(str(params.redirect_uri))
+        target = escape(callback.netloc)
+        callback_origin = callback.scheme + "://" + callback.netloc
         error_html = f'<p class="error" role="alert">{escape(error)}</p>' if error else ""
         body = f"""<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
         <meta name="viewport" content="width=device-width,initial-scale=1"><title>AIRP · 外掛程式授權</title>
@@ -152,7 +161,9 @@ class ReadOnlyOAuthProvider:
         <button name="decision" value="approve">授權讀取已發布資料</button></div></form>
         </main></body></html>"""
         return HTMLResponse(body, status_code=status_code, headers={
-            "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'none'; style-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+            # Chromium checks form-action again after the POST's 302 redirect.
+            # Permit only this flow's registered callback origin, never a wildcard.
+            "Cache-Control": "no-store", "Content-Security-Policy": f"default-src 'none'; style-src 'self'; form-action 'self' {callback_origin}; frame-ancestors 'none'; base-uri 'none'",
             # no-referrer makes browsers send Origin:null on form navigation.
             # same-origin preserves the POST origin but still hides referrers
             # from external OAuth callback hosts.
