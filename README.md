@@ -1,8 +1,8 @@
 # AIRP：GPT 角色扮演資料庫
 
-AIRP 讓你持續維護世界觀、角色、情境與背景資料，並讓 ChatGPT 自訂 GPT 透過 Actions 讀取已發布的最新內容。提供繁體中文管理介面、SQLite 資料庫、唯讀 GPT API，以及版本紀錄與備份功能。
+AIRP 讓你持續維護世界觀、角色、情境與背景資料，並讓 ChatGPT 透過自訂 MCP 外掛程式讀取已發布的最新內容。提供繁體中文管理介面、SQLite 資料庫、OAuth 授權的只讀 MCP 工具，以及版本紀錄與備份功能。另保留自訂 GPT Actions 使用的 REST API。
 
-這個專案儲存與提供角色扮演資料，不會自行呼叫 OpenAI，因此不需要 OpenAI API 金鑰。GPT 在呼叫 Action 時才會取得資料；更新資料庫不會主動推送到聊天，也不會自動改寫 GPT 的對話記憶。
+這個專案儲存與提供角色扮演資料，不會自行呼叫 OpenAI，因此不需要 OpenAI API 金鑰。ChatGPT 在呼叫工具時才會取得資料；更新資料庫不會主動推送到聊天，也不會自動改寫 GPT 的對話記憶。
 
 ## 本機啟動
 
@@ -31,7 +31,7 @@ uv run pytest
 1. 在管理介面新增世界、角色、情境或背景資料，先以草稿保存。
 2. 使用世界關聯將同一世界的資料連在一起；角色與情境可各自新增。
 3. 檢查內容後發布。只有已發布資料會提供給 GPT。
-4. 日後修改並保存，GPT 下一次呼叫 Actions 時就能讀取更新內容。
+4. 日後修改並保存，GPT 下一次呼叫工具時就能讀取更新內容。
 
 每筆資料都有版本編號。更新與刪除使用 `expected_revision` 檢查版本，避免多人或多個頁面同時編輯時互相覆蓋；遇到版本衝突請重新載入後再修改。歷史紀錄可查看並還原舊版本，還原會形成新的目前版本。刪除條目也會刪除其歷史，因此請先備份。
 
@@ -44,13 +44,19 @@ uv run pytest
 | `AIRP_DB_PATH` | SQLite 檔案位置；父目錄需可寫入 | `data/airp.sqlite3` |
 | `AIRP_ADMIN_KEY` | 管理與完整讀取的 Bearer 金鑰 | 未設定，僅限本機請求 |
 | `AIRP_READ_KEY` | GPT 唯讀 Bearer 金鑰；僅可讀取已發布資料 | 未設定，僅限本機請求 |
-| `AIRP_PUBLIC_URL` | Actions OpenAPI 文件使用的公開 HTTPS 根網址；須同時設定兩組獨立金鑰 | 未設定，使用本機模式 |
+| `AIRP_PUBLIC_URL` | MCP OAuth 與 Actions 使用的公開 HTTPS 根網址；須同時設定兩組獨立金鑰 | 未設定，使用本機模式，MCP 不啟用 |
 
 對外部署時必須設定兩組**不同且獨立產生**的隨機金鑰。可以分別執行兩次以下命令產生，再透過部署平台的秘密設定提供；不要將金鑰提交到 Git、寫進 OpenAPI 文件或分享給 GPT 使用者。
 
 ```sh
 python -c 'import secrets; print(secrets.token_urlsafe(32))'
 ```
+
+## 自訂 MCP 外掛程式
+
+目前使用自訂外掛程式的介面，請依 [docs/custom-mcp.md](docs/custom-mcp.md) 設定。伺服器 URL 為公開 HTTPS 網域的 `/mcp`，身分驗證選 OAuth，進階設定使用自動探索。連線時在 AIRP 授權頁面輸入既有 `AIRP_READ_KEY` 的值；不需要新增 OAuth 帳號或手動配置 client secret。
+
+MCP 只提供已發布資料的搜尋、全文與背景工具，沒有寫入功能。既有角色設定和管理金鑰保持不變，憑證與客戶端註冊資料持久化在同一資料庫中。
 
 ## 自訂 GPT Actions
 

@@ -48,7 +48,7 @@ python -c 'import secrets; print(secrets.token_urlsafe(32))'
 2. 開啟管理首頁，在「金鑰設定」輸入管理金鑰。
 3. 新增測試世界觀並發布，確認 GPT 讀取預覽能取得內容。
 4. 重新部署一次，確認測試資料仍保留；完成後才加入正式設定。
-5. 依 [自訂 GPT 指南](custom-gpt.md) 匯入公開網域的 `/gpt/openapi.json`，Action 驗證填唯讀金鑰。
+5. 依 [自訂 MCP 外掛程式指南](custom-mcp.md) 連接公開網域的 `/mcp`，選 OAuth，並在 AIRP 授權頁面填讀取金鑰。若使用仍支援 Actions 的自訂 GPT 編輯器，另見 [自訂 GPT 指南](custom-gpt.md)。
 
 Railway 的部署與 Volume 可能產生平台費用，請依帳號方案確認。維持單一部署副本，並設定 Volume 備份。
 

@@ -1,5 +1,5 @@
 import secrets
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import Settings
 from app.db import Store, now
+from app.mcp_server import build_mcp
 from app.models import (
     Backup, ContextResult, Entry, EntryInput, EntryList, EntryUpdate,
     HistoryList, Kind, RestoreInput, Status,
@@ -24,11 +25,16 @@ bearer = HTTPBearer(auto_error=False)
 def create_app(settings: Settings | None = None):
     settings = settings or Settings.from_env()
     store = Store(settings.db_path)
+    mcp_server, oauth_provider = None, None
 
     @asynccontextmanager
     async def lifespan(app):
         store.initialize()
-        yield
+        async with AsyncExitStack() as stack:
+            if mcp_server:
+                oauth_provider.initialize()
+                await stack.enter_async_context(mcp_server.session_manager.run())
+            yield
 
     app = FastAPI(title="AIRP 角色扮演資料庫", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
@@ -40,7 +46,7 @@ def create_app(settings: Settings | None = None):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Frame-Options"] = "DENY"
-        if request.url.path.startswith(("/api/", "/gpt/")):
+        if request.url.path.startswith(("/api/", "/gpt/", "/mcp", "/oauth/", "/.well-known/")) or request.url.path in {"/authorize", "/token", "/register", "/revoke"}:
             response.headers["Cache-Control"] = "no-store"
         if request.url.path == "/":
             response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
@@ -215,6 +221,29 @@ def create_app(settings: Settings | None = None):
         if settings.public_url:
             schema["servers"] = [{"url": settings.public_url}]
         return schema
+
+    @app.get("/mcp/info", include_in_schema=False)
+    def mcp_info():
+        return {"enabled": bool(settings.public_url), "server_url": settings.public_url + "/mcp" if settings.public_url else None,
+                "authentication": "OAuth", "scope": "airp:read",
+                "tools": ["search_entries", "get_entry", "get_roleplay_context"]}
+
+    if settings.public_url:
+        mcp_server, oauth_provider = build_mcp(settings, store, lambda **params: roleplay_context(access="reader", **params))
+        app.state.oauth_provider = oauth_provider
+        app.state.mcp_server = mcp_server
+
+        @app.get("/oauth/consent", include_in_schema=False)
+        async def oauth_consent(flow_id: Annotated[str, Query(min_length=20, max_length=80)]):
+            return await oauth_provider.consent_page(flow_id)
+
+        @app.post("/oauth/consent", include_in_schema=False)
+        async def oauth_consent_submit(request: Request):
+            return await oauth_provider.consent_submit(request)
+
+        # The MCP SDK supplies /mcp and standard OAuth discovery/registration/token routes.
+        # Mount last so the existing REST API and management UI retain their routes.
+        app.mount("/", mcp_server.streamable_http_app())
 
     return app
 
