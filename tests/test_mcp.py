@@ -145,6 +145,23 @@ def test_consent_requires_read_key_and_csrf_and_allows_cancel(client):
         assert db.execute("SELECT count(*) FROM airp_oauth_tokens").fetchone()[0] == 0
 
 
+def test_consent_preserves_browser_form_origin_and_authorizes_retry(client):
+    app = register(client)
+    form, page = begin(client, app)
+    assert page.headers["referrer-policy"] == "same-origin"
+    assert client.get("/").headers["referrer-policy"] == "no-referrer"
+    denied = client.post("/oauth/consent", data={**form, "decision": "approve", "read_key": "read-test-key"}, headers={"Origin": "null"}, follow_redirects=False)
+    assert denied.status_code == 403
+    invalid = client.post("/oauth/consent", data={**form, "decision": "approve", "read_key": "wrong-test-key"}, headers={"Origin": "https://example.com"}, follow_redirects=False)
+    assert invalid.status_code == 401
+    assert invalid.headers["referrer-policy"] == "same-origin"
+    approved = client.post("/oauth/consent", data={**form, "decision": "approve", "read_key": "read-test-key"}, headers={"Origin": "https://example.com"}, follow_redirects=False)
+    assert approved.status_code == 302
+    assert approved.headers["referrer-policy"] == "no-referrer"
+    code = parse_qs(urlsplit(approved.headers["location"]).query)["code"][0]
+    assert exchange(client, app, code).status_code == 200
+
+
 def test_bad_pkce_bad_redirect_and_replayed_codes_are_rejected(client):
     app = register(client)
     code = grant(client, app)

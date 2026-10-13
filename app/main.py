@@ -44,7 +44,7 @@ def create_app(settings: Settings | None = None):
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers["X-Frame-Options"] = "DENY"
         if request.url.path.startswith(("/api/", "/gpt/", "/mcp", "/oauth/", "/.well-known/")) or request.url.path in {"/authorize", "/token", "/register", "/revoke"}:
             response.headers["Cache-Control"] = "no-store"

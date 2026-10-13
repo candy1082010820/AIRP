@@ -153,7 +153,10 @@ class ReadOnlyOAuthProvider:
         </main></body></html>"""
         return HTMLResponse(body, status_code=status_code, headers={
             "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'none'; style-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
-            "Referrer-Policy": "no-referrer", "X-Frame-Options": "DENY",
+            # no-referrer makes browsers send Origin:null on form navigation.
+            # same-origin preserves the POST origin but still hides referrers
+            # from external OAuth callback hosts.
+            "Referrer-Policy": "same-origin", "X-Frame-Options": "DENY",
         })
 
     async def consent_submit(self, request: Request):
