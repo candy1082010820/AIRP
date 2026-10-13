@@ -84,9 +84,11 @@ docker run --name airp --restart unless-stopped \
 
 執行前在 `.env` 設定獨立的管理與唯讀金鑰、`AIRP_DB_PATH=/app/data/airp.sqlite3`，以及實際的 `AIRP_PUBLIC_URL=https://你的網域`。請在前方使用支援 HTTPS 的反向代理或部署平台。上述範例只將連接埠暴露到主機本機介面，反向代理必須能連到該連接埠。
 
-若建置環境使用網路代理或額外的信任 CA，Dockerfile 支援 BuildKit secrets：`https_proxy`、`http_proxy`、`no_proxy` 以 `--secret id=名稱,env=對應環境變數` 傳入，`pip_ca` 以 `--secret id=pip_ca,src=可信任CA檔案路徑` 傳入。這些設定僅用於建置，不會存入映像；仍保留 TLS 驗證。
+Dockerfile 使用標準建置指令，不使用 Railway 不支援的 secret mounts 與 `VOLUME` 指令。啟動時使用平台提供的 `PORT`，未設定時使用 `8000`；持久化儲存需透過平台設定或上述 `-v` 明確掛載。
 
 SQLite 檔案必須放在持久化 volume；容器重建後資料仍由該 volume 保留。映像以非 root 使用者執行，若改用 bind mount，請確保資料目錄可由 UID `10001` 寫入。SQLite 適合單一應用程式執行個體；不要讓多個部署副本透過網路檔案系統共用這個資料庫。
+
+Railway 的逐步部署方式請見 [docs/railway.md](docs/railway.md)。Railway Volume 以 root 身分掛載，因此使用本映像時需依官方指引設定 `RAILWAY_RUN_UID=0`，讓服務能寫入持久化目錄。
 
 ## 專案結構
 
